@@ -1,4 +1,4 @@
-{ stdenv, jq }:
+{ jq, jre, runCommand, stdenv, weka }:
 
 let wekaCli = runCommand
   "weka-cli"

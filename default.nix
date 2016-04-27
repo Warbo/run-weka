@@ -1,34 +1,34 @@
-{ stdenv, jq, order-deps, ML4HSFE, nix, adb-scripts }:
+{ stdenv, jq }:
 
-stdenv.mkDerivation {
-  name = "recurrent-clustering";
-
-  # Exclude .git and test-data from being imported into the Nix store
-  src = builtins.filterSource (path: type:
-    baseNameOf path != ".git" &&
-    baseNameOf path != "test-data") ./.;
-
-  buildInputs = [ adb-scripts ];
-
-  propagatedBuildInputs = [
-    (import ./weka-cli.nix)
-    order-deps
-    ML4HSFE
-    nix
-    jq
-  ];
-
-  installPhase = ''
+let wekaCli = runCommand
+  "weka-cli"
+  { propagatedBuildInputs = [ jre weka ]; }
+  ''
+    # Make it easy to run Weka
     mkdir -p "$out/bin"
-    for FILE in recurrentClustering nix_recurrentClustering runWeka cluster
-    do
-        cp "$FILE" "$out/bin/"
-    done
-
-    mkdir -p "$out/lib"
-    cp weka-cli.nix "$out/lib/"
-    cp extractFeatures "$out/lib"
-
-    chmod +x "$out/bin/"* "$out/lib/extractFeatures"
+    cat <<'EOF' > "$out/bin/weka-cli"
+    #!/usr/bin/env bash
+    "${jre}/bin/java" -Xmx1000M -cp "${weka}/share/weka/weka.jar" "$@"
+    EOF
+    chmod +x "$out/bin/weka-cli"
   '';
-}
+
+in stdenv.mkDerivation {
+     name = "run-weka";
+
+     # Exclude .git and test-data from being imported into the Nix store
+     src = builtins.filterSource (path: type:
+       baseNameOf path != ".git" &&
+       baseNameOf path != "test-data") ./.;
+
+     propagatedBuildInputs = [
+       wekaCli
+       jq
+     ];
+
+     installPhase = ''
+       mkdir -p "$out/bin"
+       cp runWeka "$out/bin/"
+       chmod +x "$out/bin/runWeka"
+     '';
+   }

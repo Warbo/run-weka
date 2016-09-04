@@ -1,18 +1,9 @@
-{ jq, jre, runCommand, stdenv, weka }:
+{ jq, jre, runCommand, stdenv, weka, writeScript }:
 
-let wekaCli = runCommand
-  "weka-cli"
-  { propagatedBuildInputs = [ jre weka ]; }
-  ''
-    # Make it easy to run Weka
-    mkdir -p "$out/bin"
-    cat <<'EOF' > "$out/bin/weka-cli"
-    #!/usr/bin/env bash
-    "${jre}/bin/java" -Xmx1000M -cp "${weka}/share/weka/weka.jar" "$@"
-    EOF
-    chmod +x "$out/bin/weka-cli"
-  '';
-
+let cmd = writeScript "weka-cli" ''
+      #!/usr/bin/env bash
+      "${jre}/bin/java" -Xmx1000M -cp "${weka}/share/weka/weka.jar" "$@"
+    '';
 in stdenv.mkDerivation {
      name = "run-weka";
 
@@ -22,13 +13,16 @@ in stdenv.mkDerivation {
        baseNameOf path != "test-data") ./.;
 
      propagatedBuildInputs = [
-       wekaCli
        jq
+       weka
+       jre
      ];
 
      installPhase = ''
        mkdir -p "$out/bin"
        cp runWeka "$out/bin/"
        chmod +x "$out/bin/runWeka"
+
+       cp ${cmd} "$out/bin/weka-cli"
      '';
    }

@@ -2,7 +2,8 @@
 
 let cmd = writeScript "weka-cli" ''
       #!/usr/bin/env bash
-      "${jre}/bin/java" -Xmx1000M -cp "${weka}/share/weka/weka.jar" "$@"
+      [[ -n "$JVM_MEM" ]] || export JVM_MEM="512M"
+      "${jre}/bin/java" -Xmx"$JVM_MEM" -cp "${weka}/share/weka/weka.jar" "$@"
     '';
 in stdenv.mkDerivation {
      name = "run-weka";

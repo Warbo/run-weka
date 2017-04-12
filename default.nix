@@ -1,28 +1,29 @@
-{ jq, jre, runCommand, stdenv, weka, writeScript }:
+{ jq, jre, makeWrapper, perl, runCommand, stdenv, weka, writeScript }:
 
-let cmd = writeScript "weka-cli" ''
-      #!/usr/bin/env bash
-      "${jre}/bin/java" $JVM_OPTS -cp "${weka}/share/weka/weka.jar" "$@"
-    '';
-in stdenv.mkDerivation {
-     name = "run-weka";
+stdenv.mkDerivation {
+  inherit jq jre perl weka;
 
-     # Exclude .git and test-data from being imported into the Nix store
-     src = builtins.filterSource (path: type:
-       baseNameOf path != ".git" &&
-       baseNameOf path != "test-data") ./.;
+  name        = "run-weka";
+  buildInputs = [ makeWrapper ];
 
-     propagatedBuildInputs = [
-       jq
-       weka
-       jre
-     ];
+  src = ./runWeka;
+  cmd = writeScript "weka-cli" ''
+    #!/usr/bin/env bash
+    java $JVM_OPTS -cp "$WEKA/share/weka/weka.jar" "$@"
+  '';
 
-     installPhase = ''
-       mkdir -p "$out/bin"
-       cp runWeka "$out/bin/"
-       chmod +x "$out/bin/runWeka"
+  unpackPhase  = "true";  # Nothing to unpack
+  installPhase = ''
+    mkdir -p "$out/bin"
 
-       cp ${cmd} "$out/bin/weka-cli"
-     '';
-   }
+    makeWrapper "$src" "$out/bin/runWeka" \
+      --prefix PATH : "$jq/bin"           \
+      --prefix PATH : "$weka/bin"         \
+      --prefix PATH : "$jre/bin"          \
+      --prefix PATH : "$perl/bin"
+
+    makeWrapper "$cmd" "$out/bin/weka-cli" \
+      --prefix PATH : "$jre/bin" \
+      --set    WEKA   "$weka"
+  '';
+}
